@@ -14,13 +14,7 @@ forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
 }
 
 ;; testable
-(cell) find_branch_by_hash(int hash, cell tree) method_id {    
-    if (cell_hash(tree) == hash) {
-        return tree;
-    }
-    if (tree.slice_refs_empty?()) {
-        return begin_cell().end_cell();
-    }
+(cell) find_branch_by_hash(int hash, cell tree) method_id {
     tuple stack = null();
     stack~push_back(tree);
     while (~ stack.is_null()) {
