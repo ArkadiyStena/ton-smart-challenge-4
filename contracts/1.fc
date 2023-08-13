@@ -5,10 +5,10 @@
   the subtree (branch) whose hash equals the received hash, the root cell of
   this branch should be returned. Return empty cell if the branch is not found.
 -}
+#pragma version >=0.4.0;
 #include "imports/stdlib.fc";
 
-() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
-
+() recv_internal() {
 }
 
 (cell) dfs(int hash, slice root) impure {
