@@ -5,11 +5,24 @@
   the subtree (branch) whose hash equals the received hash, the root cell of
   this branch should be returned. Return empty cell if the branch is not found.
 -}
+#include "imports/stdlib.fc";
 
 () recv_internal() {
 }
 
+
+(cell) dfs(int hash, cell root) impure {
+    while (~ root.slice_refs_empty?()) {
+        cell child = root.load_ref();
+        if (hash == cell_hash(child)) {
+            return child;
+        }
+        return dfs(hash, child);
+    }
+    return begin_cell().end_cell();
+}
+
 ;; testable
 (cell) find_branch_by_hash(int hash, cell tree) method_id {
-  return begin_cell().end_cell();
+    return bfs(hash, tree);
 }
