@@ -5,8 +5,6 @@
   the subtree (branch) whose hash equals the received hash, the root cell of
   this branch should be returned. Return empty cell if the branch is not found.
 -}
-#pragma version >=0.4.0;
-#include "imports/stdlib.fc";
 
 () recv_internal() {
 }
