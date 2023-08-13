@@ -7,21 +7,23 @@
 -}
 #include "imports/stdlib.fc";
 
-() recv_internal() {
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+
 }
-;; a
-(cell) dfs(int hash, cell root) impure {
+
+(cell) dfs(int hash, slice root) impure {
     while (~ root.slice_refs_empty?()) {
-        cell child = root.load_ref();
+        cell child = root~load_ref();
         if (hash == cell_hash(child)) {
             return child;
         }
-        return dfs(hash, child);
+        return dfs(hash, child.begin_parse());
     }
     return begin_cell().end_cell();
+
 }
 
 ;; testable
 (cell) find_branch_by_hash(int hash, cell tree) method_id {
-    return bfs(hash, tree);
+    return dfs(hash, tree.begin_parse());
 }
