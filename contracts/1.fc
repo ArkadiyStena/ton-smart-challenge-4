@@ -17,7 +17,8 @@
         }
         return dfs(hash, child.begin_parse());
     }
-    return begin_cell().end_cell();
+    cell nothing = null()
+    return nothing;
 
 }
 
