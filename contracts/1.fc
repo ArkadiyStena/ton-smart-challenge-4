@@ -9,7 +9,7 @@
 
 () recv_internal() {
 }
-
+;; a
 (cell) dfs(int hash, cell root) impure {
     while (~ root.slice_refs_empty?()) {
         cell child = root.load_ref();
