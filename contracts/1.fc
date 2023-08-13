@@ -23,5 +23,8 @@
 
 ;; testable
 (cell) find_branch_by_hash(int hash, cell tree) method_id {
+    if (hash == cell_hash(tree)) {
+        return tree;
+    }
     return dfs(hash, tree.begin_parse());
 }
