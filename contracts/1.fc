@@ -8,6 +8,9 @@ forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
 
 ;; testable
 (cell) find_branch_by_hash(int hash, cell tree) method_id {
+    if (hash == cell_hash(tree)) {
+        return tree;
+    }
     cell c = null();
     slice s = null();
     tuple stack = null();
