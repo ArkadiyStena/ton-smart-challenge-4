@@ -11,7 +11,7 @@ forall X -> (tuple) to_tuple (X x) asm "NOP";
     if (cell_hash(tree) == hash) {
         return tree;
     }
-    tuple stack = to_tuple([tree]);
+    tuple stack = to_tuple([tree, ]);
     while (~ stack.is_null()) {
         cell c = stack~pop_back();
         if (hash == cell_hash(c)) {
