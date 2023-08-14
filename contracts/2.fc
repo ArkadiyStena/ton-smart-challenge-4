@@ -10,7 +10,6 @@
 -}
 
 int tuple_length (tuple t) asm "TLEN";
-forall X -> (tuple) to_tuple (X x) asm "NOP";
 
 () recv_internal() {
 }
@@ -19,23 +18,29 @@ forall X -> (tuple) to_tuple (X x) asm "NOP";
 (tuple) matrix_multiplier(tuple matrixA, tuple matrixB) method_id {
     int m = matrixA.tuple_length();
     int n = matrixB.tuple_length();
-    int k = to_tuple(matrixA.at(0)).tuple_length();
+    int k = matrixA.at(0).tuple_length();
     int i = 0;
     int j = 0;
     int l = 0;
+    int value = 0;
     tuple result = empty_tuple();
-
     while (i < m) {
         tuple row = empty_tuple();
+        j = 0;
         while (j < k) {
-            int value = 0;
+            value = 0;
+            l = 0;
             while (l < n) {
-                value += to_tuple(matrixA.at(i)).at(l) * to_tuple(matrixA.at(l)).at(j);
+                value += matrixA.at(i).at(l) * matrixB.at(l).at(j);
+                l += 1;
             }
             row~tpush(value);
+            j += 1;
         }
         result~tpush(row);
+        i += 1;
     }
     return result;
 }
+
 
