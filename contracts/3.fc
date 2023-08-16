@@ -16,8 +16,6 @@
 
 -}
 
-forall X -> (tuple, ()) push_back (tuple tail, X head) asm "CONS";
-forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
 int tuple_length (tuple t) asm "TLEN";
 (int) ubits(int v) asm "UBITSIZE";
 
@@ -30,10 +28,13 @@ int tuple_length (tuple t) asm "TLEN";
     int value_size = ubits(value);
     int cur_str = 0;
     int cur_str_bits = 0;
+    int p127m1 = (1 << 128) - 1;
 
     slice s = linked_list.begin_parse();
     int s_bits = s.slice_bits();
-    tuple builders = empty_tuple();
+    
+    tuple uints = empty_tuple();
+    int last_update = 0;
 
     while (cur_str_bits != flag_size) {
         if (cur_str_bits + s_bits < flag_size) {
@@ -62,46 +63,58 @@ int tuple_length (tuple t) asm "TLEN";
             }
             cur_str_bits = flag_size;
         }    
+        if ((cur_str_bits != flag_size) & (s.slice_refs_empty?())) {
+            return linked_list;
+        }
     }
-    builders.push_back(begin_cell().store_uint(cur_str, flag_size));
     
-    builder prev_cell = begin_cell().store_slice(s);
+    last_update = 0;
 
     while (true) {
         s_bits = s.slice_bits();
-
         repeat (s_bits) {
             cur_str <<= 1;
             cur_str |= s~load_uint(1);
-
+            last_update += 1; 
+            
             if ((cur_str & flag) == flag) {
-                builder tmp1 = begin_cell();
-                builder tmp2 = begin_cell();
-                builders~push_back(begin_cell()
-                                        .store_uint(value, value_size)
-                                        .store_ref(
-                                            begin_cell()
-                                                .store_slice(s)
-                                            .end_cell()
-                                        ));
+                builder tmp1 = begin_cell()
+                                    .store_uint((cur_str >> flag_size) & ((1 << last_update) - 1), last_update)
+                                    .store_uint(value, value_size);
+                if (s.slice_bits() != 0) {
+                    tmp1 = tmp1.store_ref(begin_cell().store_slice(s).end_cell());
+                }
+                elseif (~ s.slice_refs_empty?()) {
+                    tmp1 = tmp1.store_ref(s~load_ref());
+                }
+                builder tmp2 = null();
 
-                while (builders.tuple_length()) {
-                    tmp2 = tmp1;
-                    tmp1 = builders~pop_back();
-                    tmp1 = tmp1.store_ref(tmp2.end_cell());
+                int i = uints.tuple_length() - 1;
+                while (i > 0) {
+                    tmp2 = begin_cell();
+                    repeat (min(7, i + 1)) {
+                        tmp2~store_uint(uints.at(i), 128);
+                    }
+                    i -= 7;
+                    tmp1 = tmp2.store_ref(tmp1.end_cell());
                 }
 
                 return tmp1.end_cell();
             }
+
+            if (last_update == 128) {
+                uints.tpush((cur_str >> flag_size) & p127m1);
+                last_update = 0;
+            }
         }
 
-        builders~push_back(prev_cell);
         if (s.slice_refs_empty?()) {
             return linked_list;
         }
-        prev_cell = begin_cell().store_slice(s);
+    
         s = s~load_ref().begin_parse();
     }
-    return begin_cell().end_cell();
+
+    return begin_cell().store_uint(1, 1).end_cell();
 }
 
