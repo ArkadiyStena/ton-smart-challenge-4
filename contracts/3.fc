@@ -1,3 +1,5 @@
+#include "imports/stdlib.fc";
+
 {- 
   TASK 3 - Find and replace binary substring
   Binary string is represented as a cell linked list: string splitted to chunks,
@@ -15,7 +17,7 @@
   cell ends with ...10100001111, and the second cell starts with 11111000111111...
 
 -}
-
+forall X -> int is_null (X x) asm "ISNULL";
 int tuple_length (tuple t) asm "TLEN";
 (int) ubits(int v) asm "UBITSIZE";
 
@@ -31,8 +33,12 @@ int tuple_length (tuple t) asm "TLEN";
     int p127m1 = (1 << 128) - 1;
 
     slice s = linked_list.begin_parse();
-    int s_bits = s.slice_bits();
-    
+    cell s1 = null();
+    if (~ s.slice_refs_empty?()) {
+        s1 = s~load_ref();
+    }
+    (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(p127m1);
+
     tuple uints = empty_tuple();
     int last_update = 0;
 
@@ -40,8 +46,14 @@ int tuple_length (tuple t) asm "TLEN";
         if (cur_str_bits + s_bits < flag_size) {
             cur_str <<= s_bits;
             cur_str |= s~load_uint(s_bits);
-            s = s~load_ref().begin_parse();
-            s_bits = s.slice_bits();
+            s = s1.begin_parse();
+            if (~ s.slice_refs_empty?()) {
+                s1 = s~load_ref();
+            } 
+            else {
+                s1 = null();
+            }
+            (x, s_bits, s_refs) = s.slice_compute_data_size(p127m1);
             cur_str_bits += s_bits;
         }
         elseif (cur_str_bits < flag_size) {
@@ -59,11 +71,17 @@ int tuple_length (tuple t) asm "TLEN";
                         .end_cell();
             }
             if (cur_str_bits + s_bits == flag_size) {
-                s = s~load_ref().begin_parse();
+                s = s1.begin_parse();
+                if (~ s.slice_refs_empty?()) {
+                    s1 = s~load_ref();
+                } 
+                else {
+                    s1 = null();
+                }
             }
             cur_str_bits = flag_size;
         }    
-        if ((cur_str_bits != flag_size) & (s.slice_refs_empty?())) {
+        if ((cur_str_bits != flag_size) & (s1.is_null())) {
             return linked_list;
         }
     }
@@ -71,7 +89,7 @@ int tuple_length (tuple t) asm "TLEN";
     last_update = 0;
 
     while (true) {
-        s_bits = s.slice_bits();
+        (x, s_bits, s_refs) = s.slice_compute_data_size(p127m1);
         repeat (s_bits) {
             cur_str <<= 1;
             cur_str |= s~load_uint(1);
@@ -81,11 +99,15 @@ int tuple_length (tuple t) asm "TLEN";
                 builder tmp1 = begin_cell()
                                     .store_uint((cur_str >> flag_size) & ((1 << last_update) - 1), last_update)
                                     .store_uint(value, value_size);
-                if (s.slice_bits() != 0) {
+                (x, s_bits, s_refs) = s.slice_compute_data_size(p127m1);
+                if ((s_bits != 0) & (~ s1.is_null())) {
+                    tmp1 = tmp1.store_ref(begin_cell().store_slice(s).store_ref(s1).end_cell());
+                }
+                elseif (s_bits != 0) {
                     tmp1 = tmp1.store_ref(begin_cell().store_slice(s).end_cell());
                 }
-                elseif (~ s.slice_refs_empty?()) {
-                    tmp1 = tmp1.store_ref(s~load_ref());
+                elseif (~ s1.is_null()) {
+                    tmp1 = tmp1.store_ref(s1);
                 }
                 builder tmp2 = null();
 
@@ -103,16 +125,21 @@ int tuple_length (tuple t) asm "TLEN";
             }
 
             if (last_update == 128) {
-                uints.tpush((cur_str >> flag_size) & p127m1);
+                uints~tpush((cur_str >> flag_size) & p127m1);
                 last_update = 0;
             }
         }
 
-        if (s.slice_refs_empty?()) {
+        if (s1.is_null()) {
             return linked_list;
         }
-    
-        s = s~load_ref().begin_parse();
+        s = s1.begin_parse();
+        if (~ s.slice_refs_empty?()) {
+            s1 = s~load_ref();
+        } 
+        else {
+            s1 = null();
+        }
     }
 
     return begin_cell().store_uint(1, 1).end_cell();
