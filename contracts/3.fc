@@ -118,10 +118,12 @@ int tuple_length (tuple t) asm "TLEN";
                 int i = uints.tuple_length() - 1;
                 while (i > 0) {
                     tmp2 = begin_cell();
-                    repeat (min(7, i + 1)) {
-                        tmp2~store_uint(uints.at(i), uint_size);
-                        i -= 1;
+                    int j = min(7, i + 1);
+                    repeat (j) {
+                        j -= 1;
+                        tmp2~store_uint(uints.at(i - j), uint_size);
                     }
+                    i -= 7;
                     tmp1 = tmp2.store_ref(tmp1.end_cell());
                 }
 
