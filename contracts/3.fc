@@ -40,16 +40,70 @@ int tuple_length (tuple t) asm "TLEN";
     (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(1);
 
     tuple uints = empty_tuple();
+    tuple uints_sizes = empty_tuple();
+    tuple builders = empty_tuple();
+    int bits_left = 1023;
+    builder cur_builder = begin_cell();
+
     int last_update = 0;
+    int bits_since_flag = 0;
     int uint_size = 127;
     int p126m1 = (1 << 127) - 1;
     int p254m1 = (1 << 255) - 1;
     int pflagm1 = (1 << flag_size) - 1;
 
-    while (cur_str_bits != flag_size) {
-        if (cur_str_bits + s_bits < flag_size) {
-            cur_str <<= s_bits;
-            cur_str |= s~load_uint(s_bits);
+
+    while (~ s.is_null()) {
+        (x, s_bits, s_refs) = s.slice_compute_data_size(1);
+        repeat (s_bits) {
+            cur_str &= p254m1;
+            cur_str <<= 1;
+            cur_str |= s~load_uint(1);
+            last_update += 1; 
+            if (bits_since_flag < flag_size) {
+                bits_since_flag += 1;
+            }
+
+            if ((cur_str & pflagm1) == flag) {         
+                if (bits_left < last_update - bits_since_flag) {
+                    builders~tpush(cur_builder);
+                    cur_builder = begin_cell();
+                    bits_left = 1023;
+                }
+                cur_builder~store_uint((cur_str >> bits_since_flag) & ((1 << (last_update - bits_since_flag)) - 1), 
+                                        last_update - bits_since_flag);
+                bits_left -= (last_update - bits_since_flag);
+
+                if (bits_left < value_size) {
+                    builders~tpush(cur_builder);
+                    cur_builder = begin_cell();
+                    bits_left = 1023;
+                }
+                cur_builder~store_uint(value, value_size);
+                bits_left -= value_size;
+
+                last_update = 0; 
+                cur_str = 0;
+                bits_since_flag = 0;
+            }
+
+            elseif (last_update == uint_size + bits_since_flag) {
+                if (bits_left < uint_size) {
+                    builders~tpush(cur_builder);
+                    cur_builder = begin_cell();
+                    bits_left = 1023;
+                }
+                cur_builder~store_uint((cur_str >> bits_since_flag) & p126m1, uint_size);
+                bits_left -= uint_size;
+
+                last_update = bits_since_flag;
+            }
+        }
+
+        if (s1.is_null()) {
+            s = null();
+        }
+        else {
             s = s1.begin_parse();
             if (~ s.slice_refs_empty?()) {
                 s1 = s~load_ref();
@@ -57,97 +111,28 @@ int tuple_length (tuple t) asm "TLEN";
             else {
                 s1 = null();
             }
-            (x, s_bits, s_refs) = s.slice_compute_data_size(1);
-            cur_str_bits += s_bits;
-        }
-        elseif (cur_str_bits < flag_size) {
-            cur_str <<= (flag_size - cur_str_bits);
-            cur_str |= s~load_uint(flag_size - cur_str_bits);
-            if ((cur_str & pflagm1) == flag) {
-                return begin_cell()
-                            .store_uint(value, value_size)
-                            .store_ref(
-                                begin_cell()
-                                    .store_slice(s)
-                                .end_cell()
-                            )
-                        .end_cell();
-            }
-            if (cur_str_bits + s_bits == flag_size) {
-                s = s1.begin_parse();
-                if (~ s.slice_refs_empty?()) {
-                    s1 = s~load_ref();
-                } 
-                else {
-                    s1 = null();
-                }
-            }
-            cur_str_bits = flag_size;
-        }    
-        if ((cur_str_bits != flag_size) & (s1.is_null())) {
-            return linked_list;
-        }
-    }
-    last_update = 0;
-
-    while (true) {
-        (x, s_bits, s_refs) = s.slice_compute_data_size(1);
-        repeat (s_bits) {
-            cur_str &= p254m1;
-            cur_str <<= 1;
-            cur_str |= s~load_uint(1);
-            last_update += 1; 
-            
-            if ((cur_str & pflagm1) == flag) {                
-                builder tmp1 = begin_cell()
-                                    .store_uint((cur_str >> flag_size) & ((1 << last_update) - 1), last_update)
-                                    .store_uint(value, value_size);
-                (x, s_bits, s_refs) = s.slice_compute_data_size(1);
-                if ((s_bits != 0) & (~ s1.is_null())) {
-                    tmp1 = tmp1.store_ref(begin_cell().store_slice(s).store_ref(s1).end_cell());
-                }
-                elseif (s_bits != 0) {
-                    tmp1 = tmp1.store_ref(begin_cell().store_slice(s).end_cell());
-                }
-                elseif (~ s1.is_null()) {
-                    tmp1 = tmp1.store_ref(s1);
-                }
-               
-                builder tmp2 = null();
-
-                int i = uints.tuple_length() - 1;
-                while (i >= 0) {
-                    tmp2 = begin_cell();
-                    int j = min(7, i + 1);
-                    repeat (j) {
-                        j -= 1;
-                        tmp2~store_uint(uints.at(i - j), uint_size);
-                    }
-                    i -= 7;
-                    tmp1 = tmp2.store_ref(tmp1.end_cell());
-                }
-
-                return tmp1.end_cell();
-            }
-
-            if (last_update == uint_size) {
-                uints~tpush((cur_str >> flag_size) & p126m1);
-                last_update = 0;
-            }
-        }
-
-        if (s1.is_null()) {
-            return linked_list;
-        }
-        s = s1.begin_parse();
-        if (~ s.slice_refs_empty?()) {
-            s1 = s~load_ref();
-        } 
-        else {
-            s1 = null();
         }
     }
 
-    return begin_cell().store_uint(1, 1).end_cell();
+    if (last_update != 0) {
+        if (bits_left < last_update) {
+            builders~tpush(cur_builder);
+            cur_builder = begin_cell();
+            bits_left = 1023;
+        }
+        cur_builder~store_uint(cur_str & ((1 << last_update) - 1), last_update);
+    }
+
+    builder tmp2 = cur_builder;
+    builder tmp1 = begin_cell();
+    int i = builders.tuple_length() - 1;
+    while (i >= 0) {
+        tmp1 = builders.at(i);
+        tmp1 = tmp1.store_ref(tmp2.end_cell());
+        tmp2 = tmp1;
+        i -= 1;
+    }
+
+    return tmp2.end_cell(); 
 }
 
