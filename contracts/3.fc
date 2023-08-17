@@ -1,3 +1,5 @@
+#include "imports/stdlib.fc";
+
 {- 
   TASK 3 - Find and replace binary substring
   Binary string is represented as a cell linked list: string splitted to chunks,
@@ -26,6 +28,9 @@ int tuple_length (tuple t) asm "TLEN";
 (cell) find_and_replace(int flag, int value, cell linked_list) method_id {
     int flag_size = ubits(flag);
     int value_size = ubits(value);
+    if (value_size == 0) {
+        value_size = 1;
+    }
     int cur_str = 0;
     int cur_str_bits = 0;
 
@@ -109,6 +114,7 @@ int tuple_length (tuple t) asm "TLEN";
                 elseif (~ s1.is_null()) {
                     tmp1 = tmp1.store_ref(s1);
                 }
+               
                 builder tmp2 = null();
 
                 int i = uints.tuple_length() - 1;
