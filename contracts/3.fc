@@ -38,8 +38,9 @@ int tuple_length (tuple t) asm "TLEN";
 
     tuple uints = empty_tuple();
     int last_update = 0;
-    int p127m1 = (1 << 128) - 1;
-    int p255m1 = (1 << 255) - 1;
+    int uint_size = 127;
+    int p126m1 = (1 << 127) - 1;
+    int p254m1 = (1 << 255) - 1;
 
     while (cur_str_bits != flag_size) {
         if (cur_str_bits + s_bits < flag_size) {
@@ -88,9 +89,9 @@ int tuple_length (tuple t) asm "TLEN";
     while (true) {
         (x, s_bits, s_refs) = s.slice_compute_data_size(1);
         repeat (s_bits) {
+            cur_str &= p254m1;
             cur_str <<= 1;
             cur_str |= s~load_uint(1);
-            cur_str &= p255m1;
             last_update += 1; 
             
             if ((cur_str & flag) == flag) {                
@@ -113,7 +114,7 @@ int tuple_length (tuple t) asm "TLEN";
                 while (i > 0) {
                     tmp2 = begin_cell();
                     repeat (min(7, i + 1)) {
-                        tmp2~store_uint(uints.at(i), 128);
+                        tmp2~store_uint(uints.at(i), uint_size);
                         i -= 1;
                     }
                     tmp1 = tmp2.store_ref(tmp1.end_cell());
@@ -122,8 +123,8 @@ int tuple_length (tuple t) asm "TLEN";
                 return tmp1.end_cell();
             }
 
-            if (last_update == 128) {
-                uints~tpush((cur_str >> flag_size) & p127m1);
+            if (last_update == uint_size) {
+                uints~tpush((cur_str >> flag_size) & p126m1);
                 last_update = 0;
             }
         }
