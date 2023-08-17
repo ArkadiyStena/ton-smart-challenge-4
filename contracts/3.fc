@@ -28,7 +28,7 @@ int tuple_length (tuple t) asm "TLEN";
     int value_size = ubits(value);
     int cur_str = 0;
     int cur_str_bits = 0;
-    
+
     slice s = linked_list.begin_parse();
     cell s1 = null();
     if (~ s.slice_refs_empty?()) {
@@ -41,6 +41,7 @@ int tuple_length (tuple t) asm "TLEN";
     int uint_size = 127;
     int p126m1 = (1 << 127) - 1;
     int p254m1 = (1 << 255) - 1;
+    int pflagm1 = (1 << flag_size) - 1;
 
     while (cur_str_bits != flag_size) {
         if (cur_str_bits + s_bits < flag_size) {
@@ -59,7 +60,7 @@ int tuple_length (tuple t) asm "TLEN";
         elseif (cur_str_bits < flag_size) {
             cur_str <<= (flag_size - cur_str_bits);
             cur_str |= s~load_uint(flag_size - cur_str_bits);
-            if ((cur_str & flag) == flag) {
+            if ((cur_str & pflagm1) == flag) {
                 return begin_cell()
                             .store_uint(value, value_size)
                             .store_ref(
@@ -94,7 +95,7 @@ int tuple_length (tuple t) asm "TLEN";
             cur_str |= s~load_uint(1);
             last_update += 1; 
             
-            if ((cur_str & flag) == flag) {                
+            if ((cur_str & pflagm1) == flag) {                
                 builder tmp1 = begin_cell()
                                     .store_uint((cur_str >> flag_size) & ((1 << last_update) - 1), last_update)
                                     .store_uint(value, value_size);
