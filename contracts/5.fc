@@ -36,6 +36,7 @@
         tmp = b;
         b += a;
         a = tmp;
+        i += 1;
     }
     repeat (k) {
         tmp = b;
