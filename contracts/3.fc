@@ -116,7 +116,7 @@ int tuple_length (tuple t) asm "TLEN";
                 builder tmp2 = null();
 
                 int i = uints.tuple_length() - 1;
-                while (i > 0) {
+                while (i >= 0) {
                     tmp2 = begin_cell();
                     int j = min(7, i + 1);
                     repeat (j) {
