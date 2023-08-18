@@ -6,10 +6,12 @@
   character should go to the beginning. Return new text encoded in cell.
 -}
 forall X -> int is_null (X x) asm "ISNULL";
-int tuple_length (tuple t) asm "TLEN";
+forall X -> (tuple, ()) push_back (tuple tail, X head) asm "CONS";
+forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
 
 () recv_internal() {
 }
+
 
 ;; testable
 (cell) caesar_cipher_encrypt(int shift, cell text) method_id {
@@ -23,7 +25,7 @@ int tuple_length (tuple t) asm "TLEN";
     }
     (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(1);
 
-    tuple builders = empty_tuple();
+    tuple builders = null();
     builder cur_builder = begin_cell().store_uint(0, 32);
     int cur_int = 0;
     int int_to_store = 0;
@@ -43,7 +45,7 @@ int tuple_length (tuple t) asm "TLEN";
             }
             if (cur_place < 0) {
                 if (places_left_builder == 0) {
-                    builders~tpush(cur_builder);
+                    builders~push_back(cur_builder);
                     cur_builder = begin_cell();
                     places_left_builder = 4;
                 }
@@ -72,7 +74,7 @@ int tuple_length (tuple t) asm "TLEN";
 
     if (int_to_store != 0) {
         if (places_left_builder == 0) {
-            builders~tpush(cur_builder);
+            builders~push_back(cur_builder);
             cur_builder = begin_cell();
             places_left_builder = 4;
         }
@@ -80,12 +82,10 @@ int tuple_length (tuple t) asm "TLEN";
     }
 
     builder tmp1 = begin_cell();
-    int i = builders.tuple_length() - 1;
-    while (i >= 0) {
-        tmp1 = builders.at(i);
+    while (~ builders.is_null()) {
+        tmp1 = builders~pop_back();
         tmp1 = tmp1.store_ref(cur_builder.end_cell());
         cur_builder = tmp1;
-        i -= 1;
     }
 
     return cur_builder.end_cell(); 
@@ -94,6 +94,7 @@ int tuple_length (tuple t) asm "TLEN";
 ;; testable
 (cell) caesar_cipher_decrypt(int shift, cell text) method_id {
     shift = shift % 26;
+
     slice s = text.begin_parse();
     s~skip_bits(32);
     cell s1 = null();
@@ -102,14 +103,13 @@ int tuple_length (tuple t) asm "TLEN";
     }
     (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(1);
 
-    tuple builders = empty_tuple();
+    tuple builders = null();
     builder cur_builder = begin_cell().store_uint(0, 32);
     int cur_int = 0;
     int int_to_store = 0;
     int cur_place = 240;
     int places_left_builder = 3;
     int full_ints = 0;
-
     while (~ s.is_null()) {
         (x, s_bits, s_refs) = s.slice_compute_data_size(1);
         full_ints = s_bits / 8;
@@ -123,7 +123,7 @@ int tuple_length (tuple t) asm "TLEN";
             }
             if (cur_place < 0) {
                 if (places_left_builder == 0) {
-                    builders~tpush(cur_builder);
+                    builders~push_back(cur_builder);
                     cur_builder = begin_cell();
                     places_left_builder = 4;
                 }
@@ -152,7 +152,7 @@ int tuple_length (tuple t) asm "TLEN";
 
     if (int_to_store != 0) {
         if (places_left_builder == 0) {
-            builders~tpush(cur_builder);
+            builders~push_back(cur_builder);
             cur_builder = begin_cell();
             places_left_builder = 4;
         }
@@ -160,12 +160,10 @@ int tuple_length (tuple t) asm "TLEN";
     }
 
     builder tmp1 = begin_cell();
-    int i = builders.tuple_length() - 1;
-    while (i >= 0) {
-        tmp1 = builders.at(i);
+    while (~ builders.is_null()) {
+        tmp1 = builders~pop_back();
         tmp1 = tmp1.store_ref(cur_builder.end_cell());
         cur_builder = tmp1;
-        i -= 1;
     }
 
     return cur_builder.end_cell(); 
