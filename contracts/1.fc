@@ -1,27 +1,23 @@
 forall X -> int is_null (X x) asm "ISNULL";
-forall X -> (tuple, ()) push_back (tuple tail, X head) asm "CONS";
-forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
+forall X -> (tuple, X) ~tpop (tuple t) asm "TPOP"; 
 
 () recv_internal() {
 }
-
 
 ;; testable
 (cell) find_branch_by_hash(int hash, cell tree) method_id {
     cell c = null();
     slice s = null();
-    tuple stack = null();
-    stack~push_back(tree);
+    tuple stack = single(tree);
     
     while (~ stack.is_null()) {
-        c = stack~pop_back();
+        c = stack~tpop();
         if (hash == cell_hash(c)) {
             return c;
         }
-
         s = c.begin_parse();
         repeat (s.slice_refs()) {
-            stack~push_back(s~load_ref());
+            stack~tpush(s~load_ref());
         }
     }
     return begin_cell().end_cell();
