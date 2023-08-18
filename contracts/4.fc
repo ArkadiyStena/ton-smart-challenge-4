@@ -11,12 +11,10 @@ int tuple_length (tuple t) asm "TLEN";
 () recv_internal() {
 }
 
-const int c1 = 0x01010101010101010101010101010101010101010101010101010101010101;
-const int c2 = 0x7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f;
 ;; testable
 (cell) caesar_cipher_encrypt(int shift, cell text) method_id {
-    ;; return text;
-    int sh = c1 * (shift % 128);
+    shift = shift % 26;
+
     slice s = text.begin_parse();
     s~skip_bits(32);
     cell s1 = null();
@@ -26,36 +24,37 @@ const int c2 = 0x7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f;
     (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(1);
 
     tuple builders = empty_tuple();
-    int bits_left = 1023 - 32;
     builder cur_builder = begin_cell().store_uint(0, 32);
     int cur_int = 0;
+    int int_to_store = 0;
+    int cur_place = 240;
+    int places_left_builder = 3;
     int full_ints = 0;
-    int last_int_size = 0;
-    int p248m1 = (1 << 248) - 1;
-
-
     while (~ s.is_null()) {
         (x, s_bits, s_refs) = s.slice_compute_data_size(1);
-        full_ints = s_bits / 248;
+        full_ints = s_bits / 8;
         repeat (full_ints) {
-            cur_int = (s~load_uint(248) + sh) & c2;
-            if (bits_left < 248) {
-                builders~tpush(cur_builder);
-                cur_builder = begin_cell();
-                bits_left = 1023;
+            cur_int = s~load_uint(8);
+            if ((cur_int > 64) & (cur_int < 91)) {
+                cur_int = (cur_int - 65 + shift) % 26 + 65;
             }
-            cur_builder~store_uint(cur_int, 248);
-            bits_left -= 248;
+            elseif ((cur_int > 96) & (cur_int < 123)) {
+                cur_int = (cur_int - 97 + shift) % 26 + 97;
+            }
+            if (cur_place < 0) {
+                if (places_left_builder == 0) {
+                    builders~tpush(cur_builder);
+                    cur_builder = begin_cell();
+                    places_left_builder = 4;
+                }
+                cur_builder~store_uint(int_to_store, 248);
+                int_to_store = 0;
+                places_left_builder -= 1;
+                cur_place = 244;
+            }
+            int_to_store |= (cur_int << cur_place);
+            cur_place -= 8;
         }
-        last_int_size = s_bits - full_ints * 248;
-        cur_int = (s~load_uint(last_int_size) + sh) & c2 & ((1 << last_int_size) - 1);
-        if (bits_left < last_int_size) {
-            builders~tpush(cur_builder);
-            cur_builder = begin_cell();
-            bits_left = 1023;
-        }
-        cur_builder~store_uint(cur_int, last_int_size);
-        bits_left -= last_int_size;
 
         if (s1.is_null()) {
             s = null();
@@ -69,6 +68,15 @@ const int c2 = 0x7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f;
                 s1 = null();
             }
         }
+    }
+
+    if (int_to_store != 0) {
+        if (places_left_builder == 0) {
+            builders~tpush(cur_builder);
+            cur_builder = begin_cell();
+            places_left_builder = 4;
+        }
+        cur_builder~store_uint(int_to_store, 248);
     }
 
     builder tmp1 = begin_cell();
@@ -85,7 +93,7 @@ const int c2 = 0x7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f;
 
 ;; testable
 (cell) caesar_cipher_decrypt(int shift, cell text) method_id {
-    int sh = c1 * (shift % 128);
+    shift = shift % 26;
     slice s = text.begin_parse();
     s~skip_bits(32);
     cell s1 = null();
@@ -95,36 +103,38 @@ const int c2 = 0x7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f;
     (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(1);
 
     tuple builders = empty_tuple();
-    int bits_left = 1023 - 32;
     builder cur_builder = begin_cell().store_uint(0, 32);
     int cur_int = 0;
+    int int_to_store = 0;
+    int cur_place = 240;
+    int places_left_builder = 3;
     int full_ints = 0;
-    int last_int_size = 0;
-    int p248m1 = (1 << 248) - 1;
-
 
     while (~ s.is_null()) {
         (x, s_bits, s_refs) = s.slice_compute_data_size(1);
-        full_ints = s_bits / 248;
+        full_ints = s_bits / 8;
         repeat (full_ints) {
-            cur_int =  (s~load_uint(248) - sh) & c2;
-            if (bits_left < 248) {
-                builders~tpush(cur_builder);
-                cur_builder = begin_cell();
-                bits_left = 1023;
+            cur_int = s~load_uint(8);
+            if ((cur_int > 64) & (cur_int < 91)) {
+                cur_int = (cur_int - 65 - shift) % 26 + 65;
             }
-            cur_builder~store_uint(cur_int, 248);
-            bits_left -= 248;
+            elseif ((cur_int > 96) & (cur_int < 123)) {
+                cur_int = (cur_int - 97 - shift) % 26 + 97;
+            }
+            if (cur_place < 0) {
+                if (places_left_builder == 0) {
+                    builders~tpush(cur_builder);
+                    cur_builder = begin_cell();
+                    places_left_builder = 4;
+                }
+                cur_builder~store_uint(int_to_store, 248);
+                int_to_store = 0;
+                places_left_builder -= 1;
+                cur_place = 244;
+            }
+            int_to_store |= (cur_int << cur_place);
+            cur_place -= 8;
         }
-        last_int_size = s_bits - full_ints * 248;
-        cur_int = (s~load_uint(last_int_size) - sh) & c2 & ((1 << last_int_size) - 1);
-        if (bits_left < last_int_size) {
-            builders~tpush(cur_builder);
-            cur_builder = begin_cell();
-            bits_left = 1023;
-        }
-        cur_builder~store_uint(cur_int, last_int_size);
-        bits_left -= last_int_size;
 
         if (s1.is_null()) {
             s = null();
@@ -138,6 +148,15 @@ const int c2 = 0x7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f;
                 s1 = null();
             }
         }
+    }
+
+    if (int_to_store != 0) {
+        if (places_left_builder == 0) {
+            builders~tpush(cur_builder);
+            cur_builder = begin_cell();
+            places_left_builder = 4;
+        }
+        cur_builder~store_uint(int_to_store, 248);
     }
 
     builder tmp1 = begin_cell();
