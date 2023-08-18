@@ -15,9 +15,9 @@ const int c = 0x1010101010101010101010101010101010101010101010101010101010101;
 
 ;; testable
 (cell) caesar_cipher_encrypt(int shift, cell text) method_id {
-    text~skip_bits(32);
     int sh = c * (shift % 128);
     slice s = text.begin_parse();
+    s~skip_bits(32);
     cell s1 = null();
     if (~ s.slice_refs_empty?()) {
         s1 = s~load_ref();
