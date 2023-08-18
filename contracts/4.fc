@@ -12,7 +12,6 @@ forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
 () recv_internal() {
 }
 
-
 ;; testable
 (cell) caesar_cipher_encrypt(int shift, cell text) method_id {
     shift = shift % 26;
@@ -57,7 +56,18 @@ forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
             int_to_store |= (cur_int << cur_place);
             cur_place -= 8;
         }
-
+        if (full_ints * 8 != s_bits) {
+            if (places_left_builder == 0) {
+                    builders~push_back(cur_builder);
+                    cur_builder = begin_cell();
+                    places_left_builder = 4;
+                }
+            cur_builder~store_uint(int_to_store, 248);
+            int_to_store = 0;
+            places_left_builder -= 1;
+            cur_place = 240;
+            cur_builder.store_slice(s);
+        }
         if (s1.is_null()) {
             s = null();
         }
@@ -134,6 +144,18 @@ forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
             }
             int_to_store |= (cur_int << cur_place);
             cur_place -= 8;
+        }
+        if (full_ints * 8 != s_bits) {
+            if (places_left_builder == 0) {
+                    builders~push_back(cur_builder);
+                    cur_builder = begin_cell();
+                    places_left_builder = 4;
+                }
+            cur_builder~store_uint(int_to_store, 248);
+            int_to_store = 0;
+            places_left_builder -= 1;
+            cur_place = 240;
+            cur_builder.store_slice(s);
         }
 
         if (s1.is_null()) {
