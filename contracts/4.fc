@@ -50,7 +50,7 @@ int tuple_length (tuple t) asm "TLEN";
                 cur_builder~store_uint(int_to_store, 248);
                 int_to_store = 0;
                 places_left_builder -= 1;
-                cur_place = 244;
+                cur_place = 240;
             }
             int_to_store |= (cur_int << cur_place);
             cur_place -= 8;
@@ -130,7 +130,7 @@ int tuple_length (tuple t) asm "TLEN";
                 cur_builder~store_uint(int_to_store, 248);
                 int_to_store = 0;
                 places_left_builder -= 1;
-                cur_place = 244;
+                cur_place = 240;
             }
             int_to_store |= (cur_int << cur_place);
             cur_place -= 8;
