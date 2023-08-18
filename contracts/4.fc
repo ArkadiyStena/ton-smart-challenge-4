@@ -76,7 +76,7 @@ int tuple_length (tuple t) asm "TLEN";
             cur_builder = begin_cell();
             places_left_builder = 4;
         }
-        cur_builder~store_uint(int_to_store, 248);
+        cur_builder~store_uint(int_to_store >> (cur_place + 8), 240 - cur_place);
     }
 
     builder tmp1 = begin_cell();
@@ -156,7 +156,7 @@ int tuple_length (tuple t) asm "TLEN";
             cur_builder = begin_cell();
             places_left_builder = 4;
         }
-        cur_builder~store_uint(int_to_store, 248);
+        cur_builder~store_uint(int_to_store >> (cur_place + 8), 240 - cur_place);
     }
 
     builder tmp1 = begin_cell();
