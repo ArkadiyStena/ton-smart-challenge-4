@@ -6,187 +6,76 @@
   character should go to the beginning. Return new text encoded in cell.
 -}
 forall X -> int is_null (X x) asm "ISNULL";
-forall X -> (tuple, ()) push_back (tuple tail, X head) asm "CONS";
-forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
 
 () recv_internal() {
 }
 
-;; testable
-(cell) caesar_cipher_encrypt(int shift, cell text) method_id {
-    shift = shift % 26;
 
-    slice s = text.begin_parse();
-    s~skip_bits(32);
+(cell) change_cell(int shift, slice s) impure {
     cell s1 = null();
     if (~ s.slice_refs_empty?()) {
         s1 = s~load_ref();
     }
-    (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(1);
 
-    tuple builders = null();
-    builder cur_builder = begin_cell().store_uint(0, 32);
-    int cur_int = 0;
+    var (_, s_bits, _) = s.slice_compute_data_size(1);
+    builder cur_builder = begin_cell();
+    int full_ints = s_bits / 8;
+    int cur_place = 248;
+    int places_left_builder = 4;
     int int_to_store = 0;
-    int cur_place = 240;
-    int places_left_builder = 3;
-    int full_ints = 0;
-    while (~ s.is_null()) {
-        (x, s_bits, s_refs) = s.slice_compute_data_size(1);
-        full_ints = s_bits / 8;
-        repeat (full_ints) {
-            cur_int = s~load_uint(8);
-            if ((cur_int > 64) & (cur_int < 91)) {
-                cur_int = (cur_int - 65 + shift) % 26 + 65;
-            }
-            elseif ((cur_int > 96) & (cur_int < 123)) {
-                cur_int = (cur_int - 97 + shift) % 26 + 97;
-            }
-            if (cur_place < 0) {
-                if (places_left_builder == 0) {
-                    builders~push_back(cur_builder);
-                    cur_builder = begin_cell();
-                    places_left_builder = 4;
-                }
-                cur_builder~store_uint(int_to_store, 248);
-                int_to_store = 0;
-                places_left_builder -= 1;
-                cur_place = 240;
-            }
-            int_to_store |= (cur_int << cur_place);
-            cur_place -= 8;
+    int cur_int = 0;
+
+    repeat(full_ints) { 
+        cur_int = s~load_uint(8);
+        if ((cur_int > 64) & (cur_int < 91)) {
+            cur_int = (cur_int - 65 + shift) % 26 + 65;
         }
-        if (full_ints * 8 != s_bits) {
-            if (places_left_builder == 0) {
-                    builders~push_back(cur_builder);
-                    cur_builder = begin_cell();
-                    places_left_builder = 4;
-                }
-            cur_builder~store_uint(int_to_store, 248);
+        elseif ((cur_int > 96) & (cur_int < 123)) {
+            cur_int = (cur_int - 97 + shift) % 26 + 97;
+        }
+        if (cur_place < 0) {
+            cur_builder~store_uint(int_to_store, 256);
             int_to_store = 0;
             places_left_builder -= 1;
-            cur_place = 240;
-            cur_builder.store_slice(s);
-        }
-        if (s1.is_null()) {
-            s = null();
-        }
-        else {
-            s = s1.begin_parse();
-            if (~ s.slice_refs_empty?()) {
-                s1 = s~load_ref();
-            } 
+            if (places_left_builder == 1) {
+                cur_place = 240;
+            }
             else {
-                s1 = null();
+                cur_place = 248;
             }
         }
+        int_to_store |= (cur_int << cur_place);
+        cur_place -= 8;
     }
 
     if (int_to_store != 0) {
-        if (places_left_builder == 0) {
-            builders~push_back(cur_builder);
-            cur_builder = begin_cell();
-            places_left_builder = 4;
+        if (places_left_builder == 1) {
+            cur_builder~store_uint(int_to_store >> (cur_place + 8), 240 - cur_place);
         }
-        cur_builder~store_uint(int_to_store >> (cur_place + 8), 240 - cur_place);
+        else {
+            cur_builder~store_uint(int_to_store >> (cur_place + 8), 248 - cur_place);
+        }
     }
 
-    builder tmp1 = begin_cell();
-    while (~ builders.is_null()) {
-        tmp1 = builders~pop_back();
-        tmp1 = tmp1.store_ref(cur_builder.end_cell());
-        cur_builder = tmp1;
+    if (s1.is_null()){
+        return cur_builder.end_cell();
     }
 
-    return cur_builder.end_cell(); 
+    return cur_builder.store_ref(change_cell(shift, s1.begin_parse())).end_cell();
+}
+
+;; testable
+(cell) caesar_cipher_encrypt(int shift, cell text) method_id {
+    shift %= 26;
+    slice s = text.begin_parse();
+    s~load_uint(32);
+    return begin_cell().store_uint(0, 32).store_ref(change_cell(shift, s)).end_cell();
 }
 
 ;; testable
 (cell) caesar_cipher_decrypt(int shift, cell text) method_id {
-    shift = shift % 26;
-
+    shift %= 26;
     slice s = text.begin_parse();
-    s~skip_bits(32);
-    cell s1 = null();
-    if (~ s.slice_refs_empty?()) {
-        s1 = s~load_ref();
-    }
-    (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(1);
-
-    tuple builders = null();
-    builder cur_builder = begin_cell().store_uint(0, 32);
-    int cur_int = 0;
-    int int_to_store = 0;
-    int cur_place = 240;
-    int places_left_builder = 3;
-    int full_ints = 0;
-    while (~ s.is_null()) {
-        (x, s_bits, s_refs) = s.slice_compute_data_size(1);
-        full_ints = s_bits / 8;
-        repeat (full_ints) {
-            cur_int = s~load_uint(8);
-            if ((cur_int > 64) & (cur_int < 91)) {
-                cur_int = (cur_int - 65 - shift) % 26 + 65;
-            }
-            elseif ((cur_int > 96) & (cur_int < 123)) {
-                cur_int = (cur_int - 97 - shift) % 26 + 97;
-            }
-            if (cur_place < 0) {
-                if (places_left_builder == 0) {
-                    builders~push_back(cur_builder);
-                    cur_builder = begin_cell();
-                    places_left_builder = 4;
-                }
-                cur_builder~store_uint(int_to_store, 248);
-                int_to_store = 0;
-                places_left_builder -= 1;
-                cur_place = 240;
-            }
-            int_to_store |= (cur_int << cur_place);
-            cur_place -= 8;
-        }
-        if (full_ints * 8 != s_bits) {
-            if (places_left_builder == 0) {
-                    builders~push_back(cur_builder);
-                    cur_builder = begin_cell();
-                    places_left_builder = 4;
-                }
-            cur_builder~store_uint(int_to_store, 248);
-            int_to_store = 0;
-            places_left_builder -= 1;
-            cur_place = 240;
-            cur_builder.store_slice(s);
-        }
-
-        if (s1.is_null()) {
-            s = null();
-        }
-        else {
-            s = s1.begin_parse();
-            if (~ s.slice_refs_empty?()) {
-                s1 = s~load_ref();
-            } 
-            else {
-                s1 = null();
-            }
-        }
-    }
-
-    if (int_to_store != 0) {
-        if (places_left_builder == 0) {
-            builders~push_back(cur_builder);
-            cur_builder = begin_cell();
-            places_left_builder = 4;
-        }
-        cur_builder~store_uint(int_to_store >> (cur_place + 8), 240 - cur_place);
-    }
-
-    builder tmp1 = begin_cell();
-    while (~ builders.is_null()) {
-        tmp1 = builders~pop_back();
-        tmp1 = tmp1.store_ref(cur_builder.end_cell());
-        cur_builder = tmp1;
-    }
-
-    return cur_builder.end_cell(); 
+    s~load_uint(32);
+    return begin_cell().store_uint(0, 32).store_ref(change_cell(- shift, s)).end_cell();
 }
