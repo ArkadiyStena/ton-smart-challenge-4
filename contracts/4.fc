@@ -25,8 +25,8 @@ const int c = 0x1010101010101010101010101010101010101010101010101010101010101;
     (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(1);
 
     tuple builders = empty_tuple();
-    int bits_left = 1023;
-    builder cur_builder = begin_cell();
+    int bits_left = 1023 - 32;
+    builder cur_builder = begin_cell().store_uint(0, 32);
     int cur_int = 0;
     int full_ints = 0;
     int last_int_size = 0;
@@ -94,8 +94,8 @@ const int c = 0x1010101010101010101010101010101010101010101010101010101010101;
     (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(1);
 
     tuple builders = empty_tuple();
-    int bits_left = 1023;
-    builder cur_builder = begin_cell();
+    int bits_left = 1023 - 32;
+    builder cur_builder = begin_cell().store_uint(0, 32);
     int cur_int = 0;
     int full_ints = 0;
     int last_int_size = 0;
