@@ -1,5 +1,8 @@
+forall X -> int is_null (X x) asm "ISNULL";
+
 () recv_internal() {
 }
+
 (cell) dfs(int hash, slice root) impure {
     while (~ root.slice_refs_empty?()) {
         cell child = root~load_ref();
