@@ -9,13 +9,140 @@
 () recv_internal() {
 }
 
+const int c = 0x1010101010101010101010101010101010101010101010101010101010101;
+
 ;; testable
 (cell) caesar_cipher_encrypt(int shift, cell text) method_id {
-  return begin_cell().end_cell();
+    int sh = c * (shift % 128);
+    slice s = text.begin_parse();
+    cell s1 = null();
+    if (~ s.slice_refs_empty?()) {
+        s1 = s~load_ref();
+    }
+    (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(1);
+
+    tuple builders = empty_tuple();
+    int bits_left = 1023;
+    builder cur_builder = begin_cell();
+    int cur_int = 0;
+    int full_ints = 0;
+    int last_int_size = 0;
+    int p248m1 = (1 << 248) - 1;
+
+
+    while (~ s.is_null()) {
+        (x, s_bits, s_refs) = s.slice_compute_data_size(1);
+        full_ints = s_bits / 248;
+        repeat (full_ints) {
+            cur_int = s~load_uint(248) + sh;
+            if (bits_left < 248) {
+                builders~tpush(cur_builder);
+                cur_builder = begin_cell();
+                bits_left = 1023;
+            }
+            cur_builder~store_uint(cur_int & p248m1, 248);
+            bits_left -= 248;
+        }
+        last_int_size = s_bits - full_ints * 248;
+        cur_int = s~load_uint(last_int_size) + sh;
+        if (bits_left < last_int_size) {
+            builders~tpush(cur_builder);
+            cur_builder = begin_cell();
+            bits_left = 1023;
+        }
+        cur_builder~store_uint(cur_int & ((1 << last_int_size) - 1), last_int_size);
+        bits_left -= last_int_size;
+
+        if (s1.is_null()) {
+            s = null();
+        }
+        else {
+            s = s1.begin_parse();
+            if (~ s.slice_refs_empty?()) {
+                s1 = s~load_ref();
+            } 
+            else {
+                s1 = null();
+            }
+        }
+    }
+
+    builder tmp1 = begin_cell();
+    int i = builders.tuple_length() - 1;
+    while (i >= 0) {
+        tmp1 = builders.at(i);
+        tmp1 = tmp1.store_ref(cur_builder.end_cell());
+        cur_builder = tmp1;
+        i -= 1;
+    }
+
+    return cur_builder.end_cell(); 
 }
 
 ;; testable
 (cell) caesar_cipher_decrypt(int shift, cell text) method_id {
-  return begin_cell().end_cell();
-}
+    int sh = c * (shift % 128);
+    slice s = text.begin_parse();
+    cell s1 = null();
+    if (~ s.slice_refs_empty?()) {
+        s1 = s~load_ref();
+    }
+    (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(1);
 
+    tuple builders = empty_tuple();
+    int bits_left = 1023;
+    builder cur_builder = begin_cell();
+    int cur_int = 0;
+    int full_ints = 0;
+    int last_int_size = 0;
+    int p248m1 = (1 << 248) - 1;
+
+
+    while (~ s.is_null()) {
+        (x, s_bits, s_refs) = s.slice_compute_data_size(1);
+        full_ints = s_bits / 248;
+        repeat (full_ints) {
+            cur_int = s~load_uint(248) - sh;
+            if (bits_left < 248) {
+                builders~tpush(cur_builder);
+                cur_builder = begin_cell();
+                bits_left = 1023;
+            }
+            cur_builder~store_uint(cur_int & p248m1, 248);
+            bits_left -= 248;
+        }
+        last_int_size = s_bits - full_ints * 248;
+        cur_int = s~load_uint(last_int_size) - sh;
+        if (bits_left < last_int_size) {
+            builders~tpush(cur_builder);
+            cur_builder = begin_cell();
+            bits_left = 1023;
+        }
+        cur_builder~store_uint(cur_int & ((1 << last_int_size) - 1), last_int_size);
+        bits_left -= last_int_size;
+
+        if (s1.is_null()) {
+            s = null();
+        }
+        else {
+            s = s1.begin_parse();
+            if (~ s.slice_refs_empty?()) {
+                s1 = s~load_ref();
+            } 
+            else {
+                s1 = null();
+            }
+        }
+    }
+
+    builder tmp1 = begin_cell();
+    int i = builders.tuple_length() - 1;
+    while (i >= 0) {
+        tmp1 = builders.at(i);
+        tmp1 = tmp1.store_ref(cur_builder.end_cell());
+        cur_builder = tmp1;
+        i -= 1;
+    }
+
+    return cur_builder.end_cell(); 
+}

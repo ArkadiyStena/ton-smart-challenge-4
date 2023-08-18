@@ -26,11 +26,8 @@ int tuple_length (tuple t) asm "TLEN";
 (cell) find_and_replace(int flag, int value, cell linked_list) method_id {
     int flag_size = ubits(flag);
     int value_size = ubits(value);
-    if (value_size == 0) {
-        value_size = 1;
-    }
+
     int cur_str = 0;
-    int cur_str_bits = 0;
 
     slice s = linked_list.begin_parse();
     cell s1 = null();
@@ -39,8 +36,6 @@ int tuple_length (tuple t) asm "TLEN";
     }
     (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(1);
 
-    tuple uints = empty_tuple();
-    tuple uints_sizes = empty_tuple();
     tuple builders = empty_tuple();
     int bits_left = 1023;
     builder cur_builder = begin_cell();
@@ -135,4 +130,3 @@ int tuple_length (tuple t) asm "TLEN";
 
     return tmp2.end_cell(); 
 }
-
