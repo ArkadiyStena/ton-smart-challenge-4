@@ -11,7 +11,7 @@ forall X -> int is_null (X x) asm "ISNULL";
 }
 
 
-(cell) change_cell(int shift, slice s) impure {
+(cell) change_cell(int shift, slice s, int first) impure {
     cell s1 = null();
     if (~ s.slice_refs_empty?()) {
         s1 = s~load_ref();
@@ -25,6 +25,9 @@ forall X -> int is_null (X x) asm "ISNULL";
     int int_to_store = 0;
     int cur_int = 0;
 
+    if (first == 1) {
+        cur_builder~store_uint(0, 32);
+    }
     repeat(full_ints) { 
         cur_int = s~load_uint(8);
         if ((cur_int > 64) & (cur_int < 91)) {
@@ -61,7 +64,7 @@ forall X -> int is_null (X x) asm "ISNULL";
         return cur_builder.end_cell();
     }
 
-    return cur_builder.store_ref(change_cell(shift, s1.begin_parse())).end_cell();
+    return cur_builder.store_ref(change_cell(shift, s1.begin_parse(), 0)).end_cell();
 }
 
 ;; testable
@@ -69,7 +72,7 @@ forall X -> int is_null (X x) asm "ISNULL";
     shift %= 26;
     slice s = text.begin_parse();
     s~load_uint(32);
-    return begin_cell().store_uint(0, 32).store_ref(change_cell(shift, s)).end_cell();
+    return change_cell(shift, s, 1);
 }
 
 ;; testable
@@ -77,5 +80,5 @@ forall X -> int is_null (X x) asm "ISNULL";
     shift %= 26;
     slice s = text.begin_parse();
     s~load_uint(32);
-    return begin_cell().store_uint(0, 32).store_ref(change_cell(- shift, s)).end_cell();
+    return change_cell(- shift, s, 1);
 }
