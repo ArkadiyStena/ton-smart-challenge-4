@@ -24,101 +24,103 @@ int tuple_length (tuple t) asm "TLEN";
 
 ;; testable
 (cell) find_and_replace(int flag, int value, cell linked_list) method_id {
-    int flag_size = ubits(flag);
-    int value_size = ubits(value);
+    int flag_size = ubits(flag);  ;; bit size of the flag to replace
+    int value_size = ubits(value);  ;; bit size of the value
 
-    int cur_str = 0;
+    int cur_str = 0;  ;; current substring stored as variable
 
-    slice s = linked_list.begin_parse();
-    cell s1 = null();
-    if (~ s.slice_refs_empty?()) {
+    slice s = linked_list.begin_parse();  ;; current slice
+    cell s1 = null();  ;; reference from the current slice
+    if (~ s.slice_refs_empty?()) {  ;; check that s have references
         s1 = s~load_ref();
     }
+    ;; x = s_bits - unnecessary variable, s_bits - amount of bits in s, s_refs = 0 (as we have already loaded one possible)
     (int, int, int) (x, s_bits, s_refs) = s.slice_compute_data_size(1);
+  
+    tuple builders = empty_tuple();  ;; list of builders, from which the resulting cell will be created
+    int bits_left = 1023;  ;; amount of bits available in the current builder
+    builder cur_builder = begin_cell();  ;; current builder that will be stored in the builders tuple after filling
 
-    tuple builders = empty_tuple();
-    int bits_left = 1023;
-    builder cur_builder = begin_cell();
-
-    int last_update = 0;
-    int bits_since_flag = 0;
-    int uint_size = 127;
-    int p126m1 = (1 << 127) - 1;
-    int p254m1 = (1 << 255) - 1;
-    int pflagm1 = (1 << flag_size) - 1;
+    int last_update = 0;  ;; bits since uint was storred in the cur_builder last time
+    int bits_since_flag = 0;  ;; bits since last flag occurrence
+    int uint_size = 127;  ;; size of uint that will be stored in builder 
+    int p126m1 = (1 << 127) - 1;  ;; 2 ** 126 - 1 (127 ones in bits representation)
+    int p254m1 = (1 << 255) - 1;  ;; 255 ones
+    int pflagm1 = (1 << flag_size) - 1;  ;; [flag size] ones
 
 
     while (~ s.is_null()) {
-        (x, s_bits, s_refs) = s.slice_compute_data_size(1);
-        repeat (s_bits) {
-            cur_str &= p254m1;
-            cur_str <<= 1;
-            cur_str |= s~load_uint(1);
-            last_update += 1; 
-            if (bits_since_flag < flag_size) {
-                bits_since_flag += 1;
+        (x, s_bits, s_refs) = s.slice_compute_data_size(1);  ;; same as in 38 th line
+        repeat (s_bits) {  ;; while s is not empty
+            cur_str &= p254m1;  ;; delete last bit from cur string (to avoid shifting errors)
+            cur_str <<= 1;  ;; shift bits
+            cur_str |= s~load_uint(1);  ;; add one bit from the current slice 
+            last_update += 1;  
+            if (bits_since_flag < flag_size) {  ;; if cur_str size is less than flag size
+                bits_since_flag += 1;  
             }
 
-            if ((cur_str & pflagm1) == flag) {         
-                if (bits_left < last_update - bits_since_flag) {
-                    builders~tpush(cur_builder);
-                    cur_builder = begin_cell();
+            if ((cur_str & pflagm1) == flag) {  ;; if we've found the flag  
+                if (bits_left < last_update - bits_since_flag) {  ;; if cur_str cannot be stored in current builder
+                    builders~tpush(cur_builder);  ;; push cur_builders to builders list
+                    cur_builder = begin_cell();  ;; make new cur_builder
                     bits_left = 1023;
                 }
                 cur_builder~store_uint((cur_str >> bits_since_flag) & ((1 << (last_update - bits_since_flag)) - 1), 
-                                        last_update - bits_since_flag);
-                bits_left -= (last_update - bits_since_flag);
+                                        last_update - bits_since_flag);  ;; add cur_str without flag to builder
+                bits_left -= (last_update - bits_since_flag);  ;; update amount of free bits
 
-                if (bits_left < value_size) {
-                    builders~tpush(cur_builder);
+                if (bits_left < value_size) {  ;; if substituting value cannot be stored in the current builder
+                    builders~tpush(cur_builder);  ;; same as lines 65-67
                     cur_builder = begin_cell();
                     bits_left = 1023;
                 }
-                cur_builder~store_uint(value, value_size);
+                cur_builder~store_uint(value, value_size);  ;; store substituting value in cur_builder
                 bits_left -= value_size;
 
-                last_update = 0; 
-                cur_str = 0;
-                bits_since_flag = 0;
+                last_update = 0;  ;; bits since cur_builder was updated = 0
+                cur_str = 0;  ;; we stored all data from current string to cur_builder 
+                bits_since_flag = 0;  ;; bits since last flag occurrence = 0
             }
 
-            elseif (last_update == uint_size + bits_since_flag) {
-                if (bits_left < uint_size) {
+            elseif (last_update == uint_size + bits_since_flag) {  ;; if it is time to store new uint in builder
+                if (bits_left < uint_size) {  ;; if uint doesn't fit to builder
                     builders~tpush(cur_builder);
                     cur_builder = begin_cell();
                     bits_left = 1023;
                 }
-                cur_builder~store_uint((cur_str >> bits_since_flag) & p126m1, uint_size);
+                ;; store [uint_size] bits from cur_str after skipping first [bits_since_flag] bits
+                cur_builder~store_uint((cur_str >> bits_since_flag) & p126m1, uint_size);  
                 bits_left -= uint_size;
 
-                last_update = bits_since_flag;
+                last_update = bits_since_flag;  ;; this means that there are bits_since_flag bits in cur_string
             }
         }
 
-        if (s1.is_null()) {
+        if (s1.is_null()) {  ;; if current slice did't have any references - left the loop
             s = null();
         }
         else {
-            s = s1.begin_parse();
+            s = s1.begin_parse();  ;; s = it's reference (next element of the list)
             if (~ s.slice_refs_empty?()) {
-                s1 = s~load_ref();
+                s1 = s~load_ref();  
             } 
             else {
                 s1 = null();
             }
         }
     }
-
-    if (last_update != 0) {
+    ;; loop ended.
+    if (last_update != 0) {  ;; check if we have already stored all data from cur_str
         if (bits_left < last_update) {
             builders~tpush(cur_builder);
             cur_builder = begin_cell();
             bits_left = 1023;
         }
-        cur_builder~store_uint(cur_str & ((1 << last_update) - 1), last_update);
+        cur_builder~store_uint(cur_str & ((1 << last_update) - 1), last_update);  ;; if not - store it
     }
-
-    builder tmp2 = cur_builder;
+    ;; creating resulting cell starting from the end of the builders list
+    builder tmp2 = cur_builder;  
     builder tmp1 = begin_cell();
     int i = builders.tuple_length() - 1;
     while (i >= 0) {
